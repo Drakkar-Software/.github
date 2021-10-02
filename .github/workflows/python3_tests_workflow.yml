@@ -44,13 +44,13 @@ jobs:
         run: pip install --prefer-binary -r dev_requirements.txt -r requirements.txt
 
       - name: Compile project
-        if: ${{ inputs.use_cython }} && matrix.type == 'cython'
+        if: ${{ matrix.type == 'cython' && inputs.use_cython }}
         run: |
           python setup.py build_ext --inplace
           python setup.py install
 
       - name: Pytests
-        if: ${{ inputs.use_cython }} && matrix.type == 'cython'
+        if: ${{ matrix.type == 'cython' && inputs.use_cython }}
         env:
           CYTHON_IGNORE: True
         run: pytest --cov=. --cov-config=.coveragerc --durations=0 -rw ${{ inputs.project_test_dirs }}
