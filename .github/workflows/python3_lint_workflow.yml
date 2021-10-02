@@ -1,0 +1,50 @@
+name: OctoBot Python3 Lint reusable workflow
+
+on:
+  workflow_call:
+    inputs:
+      project_main_package:
+        description: 'Python project main package'
+        type: string
+        required: true
+      python_version:
+        description: 'Python version to use'
+        type: string
+        default: '3.8.x'
+      python_arch:
+        description: 'Python arch to use'
+        type: string
+        default: 'x64'
+      use_pylint:
+        description: 'Run pylint check'
+        type: boolean
+        default: true
+      use_black:
+        description: 'Run black code formatter check'
+        type: boolean
+        default: false
+
+jobs:
+  lint:
+    name: Ubuntu - Python - lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ inputs.python_version }}
+        architecture: ${{ inputs.python_arch }}
+
+    - name: Install dependencies
+      run: pip install --prefer-binary -r dev_requirements.txt -r requirements.txt
+
+    - name: Black lint
+      if: ${{ inputs.use_black }}
+      run: black ${{ inputs.project_main_package }} --diff --check
+
+    - name: Pylint
+      if: ${{ inputs.use_pylint }}
+      run: |
+        pylint --rcfile=standard.rc ${{ inputs.project_main_package }}
+        if [ $? -ne 1 ]; then exit 0; fi
