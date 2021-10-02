@@ -1,0 +1,106 @@
+name: OctoBot Python3 Tests reusable workflow
+
+on:
+  workflow_call:
+    inputs:
+      python_cibw_builds:
+        description: 'Project cibw builds'
+        type: string
+        default: 'cp38-* cp39-*'
+      python_version:
+        description: 'Python version to use'
+        type: string
+        default: '3.8.x'
+      python_arch:
+        description: 'Python arch to use'
+        type: string
+        default: 'x64'
+    secrets:
+      PYPI_OFFICIAL_UPLOAD_URL:
+        required: true
+      PYPI_USERNAME:
+        required: true
+      PYPI_PASSWORD:
+        required: true
+
+jobs:
+  build_wheels:
+    name: ${{ matrix.os }} - Python - deploy
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ inputs.python_version }}
+          architecture: ${{ inputs.python_arch }}
+
+      - name: Install dependencies
+        if: matrix.os != 'ubuntu-latest'
+        run: pip install --prefer-binary -r dev_requirements.txt -r requirements.txt
+
+      - name: Build wheel
+        if: matrix.os != 'ubuntu-latest'
+        run: python setup.py bdist_wheel
+
+      - name: Install cibuildwheel
+        if: matrix.os == 'ubuntu-latest'
+        run: pip install cibuildwheel twine
+
+      - name: set up qemu
+        if: matrix.os == 'ubuntu-latest'
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: arm64
+
+      - name: Build wheels
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m cibuildwheel --output-dir wheelhouse
+        env:
+          CIBW_BUILD: ${{ inputs.python_cibw_builds }}
+          CIBW_BUILD_VERBOSITY_LINUX: 0
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
+          CIBW_MANYLINUX_I686_IMAGE: manylinux2014
+          CIBW_ARCHS_LINUX: 'auto aarch64'
+          CIBW_BEFORE_BUILD_LINUX: >
+            python -m pip install --upgrade pip
+            pip install --prefer-binary auditwheel -r dev_requirements.txt -r requirements.txt
+          CIBW_BEFORE_ALL_LINUX: >
+            yum install -y libffi libffi-devel openssl-devel wget unzip blas-devel lapack-devel libxml2-devel libxslt-devel
+
+      - name: Publish package
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m twine upload --repository-url ${{ secrets.PYPI_OFFICIAL_UPLOAD_URL }} -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} --skip-existing wheelhouse/*
+
+      - name: Publish package
+        if: matrix.os != 'ubuntu-latest'
+        run: |
+          python -m twine upload --repository-url ${{ secrets.PYPI_OFFICIAL_UPLOAD_URL }} -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} --skip-existing dist/*
+
+  build_sdist:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    name: Source distribution - Python - deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ inputs.python_version }}
+          architecture: ${{ inputs.python_arch }}
+
+      - name: Install dependencies
+        run: pip install --prefer-binary -r dev_requirements.txt -r requirements.txt
+
+      - name: Build sdist
+        run: python setup.py sdist
+
+      - name: Publish package
+        run: |
+          python -m twine upload --repository-url ${{ secrets.PYPI_OFFICIAL_UPLOAD_URL }} -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} --skip-existing dist/*
