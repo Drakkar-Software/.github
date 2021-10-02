@@ -1,0 +1,67 @@
+name: OctoBot Python3 Tests reusable workflow
+
+on:
+  workflow_call:
+    inputs:
+      project_test_dirs:
+        description: 'Project test dirs'
+        type: string
+        default: 'tests'
+      python_version:
+        description: 'Python version to use'
+        type: string
+        default: '3.8.x'
+      python_arch:
+        description: 'Python arch to use'
+        type: string
+        default: 'x64'
+      use_cython:
+        description: 'If project use cythonization'
+        type: boolean
+        required: true
+    secrets:
+      COVERALLS_REPO_TOKEN:
+        required: false
+
+jobs:
+  tests:
+    name: ${{ matrix.os }} - Python - ${{ matrix.type }} - tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ macos-latest, windows-latest, ubuntu-latest ]
+        type: [ sources, cython ]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.8
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ inputs.python_version }}
+          architecture: ${{ inputs.python_arch }}
+
+      - name: Install dependencies
+        run: pip install --prefer-binary -r dev_requirements.txt -r requirements.txt
+
+      - name: Compile project
+        if: ${{ inputs.use_cython }} && matrix.type == 'cython'
+        run: |
+          python setup.py build_ext --inplace
+          python setup.py install
+
+      - name: Pytests
+        if: ${{ inputs.use_cython }} && matrix.type == 'cython'
+        env:
+          CYTHON_IGNORE: True
+        run: pytest --cov=. --cov-config=.coveragerc --durations=0 -rw ${{ inputs.project_test_dirs }}
+
+      - name: Pytests
+        if: matrix.type != 'cython'
+        run: pytest --cov=. --cov-config=.coveragerc --durations=0 -rw ${{ inputs.project_test_dirs }}
+
+      - name: Publish coverage
+        if: matrix.type == 'sources' && github.event_name == 'push'
+        run: coveralls
+        continue-on-error: true
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
