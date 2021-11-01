@@ -6,7 +6,7 @@ on:
       python_cibw_builds:
         description: 'Project cibw builds'
         type: string
-        default: 'cp38-* cp39-*'
+        default: 'cp38-*'
       python_version:
         description: 'Python version to use'
         type: string
