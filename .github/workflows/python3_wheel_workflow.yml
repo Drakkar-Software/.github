@@ -74,7 +74,12 @@ jobs:
             python -m pip install --upgrade pip
             pip install --prefer-binary auditwheel -r dev_requirements.txt -r requirements.txt
           CIBW_BEFORE_ALL_LINUX: >
-            yum install -y libffi libffi-devel openssl-devel wget unzip blas-devel lapack-devel libxml2-devel libxslt-devel
+            if which yum >/dev/null; then
+                yum install -y libffi libffi-devel openssl-devel wget unzip blas-devel lapack-devel libxml2-devel libxslt-devel
+            else
+                apk add libffi libffi-dev openssl-dev wget unzip blas-dev lapack-dev libxml2-dev libxslt-dev
+            fi
+
 
       - name: Publish package
         if: ${{ matrix.os == 'ubuntu-latest' && inputs.use_cython }}
