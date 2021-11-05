@@ -75,9 +75,9 @@ jobs:
             pip install --prefer-binary auditwheel -r dev_requirements.txt -r requirements.txt
           CIBW_BEFORE_ALL_LINUX: >
             if which yum >/dev/null; then
-                yum install -y libffi libffi-devel openssl-devel wget unzip blas-devel lapack-devel libxml2-devel libxslt-devel
+                yum install -y libffi libffi-devel openssl-devel wget unzip blas-devel lapack-devel libxml2-devel libxslt-devel libssl-devel python3-devel cargo
             else
-                apk add libffi libffi-dev openssl-dev wget unzip blas-dev lapack-dev libxml2-dev libxslt-dev
+                apk add libffi libffi-dev openssl-dev wget unzip blas-dev lapack-dev libxml2-dev libxslt-dev python3-dev gcc musl-dev cargo
             fi
 
 
