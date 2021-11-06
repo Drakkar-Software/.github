@@ -6,7 +6,7 @@ on:
       python_cibw_builds:
         description: 'Project cibw builds'
         type: string
-        default: 'cp38-*'
+        default: 'cp38-* cp39-*'
       python_version:
         description: 'Python version to use'
         type: string
@@ -70,15 +70,18 @@ jobs:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
           CIBW_MANYLINUX_I686_IMAGE: manylinux2014
           CIBW_ARCHS_LINUX: 'auto aarch64'
+          # skip musllinux for now, requires to build cryptography
+          CIBW_SKIP: '*-musllinux*'
           CIBW_BEFORE_BUILD_LINUX: >
             python -m pip install --upgrade pip
             pip install --prefer-binary auditwheel -r dev_requirements.txt -r requirements.txt
           CIBW_BEFORE_ALL_LINUX: >
             if which yum >/dev/null; then
-                yum install -y libffi libffi-devel openssl-devel wget unzip blas-devel lapack-devel libxml2-devel libxslt-devel python3-devel curl
-                curl https://sh.rustup.rs -sSf | sh -s -- -y
+                yum install -y libffi libffi-devel openssl-devel wget unzip blas-devel lapack-devel libxml2-devel libxslt-devel python3-devel
+            elif which apt-get >/dev/null; then
+                apt-get install -y build-essential libssl-dev libffi-dev wget unzip libxml2-dev python3-dev libxslt-dev python3-dev gcc musl-dev
             else
-                apk add libffi libffi-dev openssl-dev wget unzip blas-dev lapack-dev libxml2-dev libxslt-dev python3-dev gcc musl-dev cargo
+                apk add libffi libffi-dev openssl-dev wget unzip blas-dev lapack-dev libxml2-dev libxslt-dev python3-dev gcc musl-dev
             fi
 
 
