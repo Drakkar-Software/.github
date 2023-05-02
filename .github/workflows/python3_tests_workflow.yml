@@ -25,7 +25,7 @@ on:
 
 jobs:
   tests:
-    name: ${{ matrix.os }} - Python - ${{ matrix.type }} - tests
+    name: ${{ matrix.os }} - Python - tests
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
