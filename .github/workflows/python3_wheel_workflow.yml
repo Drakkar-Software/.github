@@ -3,22 +3,14 @@ name: OctoBot Python3 Tests reusable workflow
 on:
   workflow_call:
     inputs:
-      python_cibw_build:
-        description: 'Project cibw build'
-        type: string
-        default: 'cp38-*'
       python_version:
         description: 'Python version to use'
         type: string
-        default: '3.8.x'
+        default: '3.10.x'
       python_arch:
         description: 'Python arch to use'
         type: string
         default: 'x64'
-      use_cython:
-        description: 'If project use cythonization'
-        type: boolean
-        default: true
     secrets:
       PYPI_OFFICIAL_UPLOAD_URL:
         required: true
@@ -28,141 +20,20 @@ on:
         required: true
 
 jobs:
-  build_linux_wheels:
-    name: Ubuntu - Python - deploy
-    if: ${{ inputs.use_cython }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [ x86_64, i686, aarch64 ]
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ inputs.python_version }}
-          architecture: ${{ inputs.python_arch }}
-
-      - name: Install cibuildwheel
-        run: pip install cibuildwheel twine
-
-      - name: Set up Qemu when building arm
-        if: ${{ matrix.arch == 'aarch64' }}
-        uses: docker/setup-qemu-action@v1
-        with:
-          platforms: arm64
-
-      - name: Build wheels
-        run: python -m cibuildwheel --output-dir wheelhouse
-        env:
-          CIBW_BUILD: ${{ inputs.python_cibw_build }}
-          CIBW_BUILD_VERBOSITY_LINUX: 0
-          CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
-          CIBW_MANYLINUX_I686_IMAGE: manylinux2014
-          CIBW_ARCHS_LINUX: ${{ matrix.arch }}
-          # skip musllinux for now, requires to build cryptography
-          CIBW_SKIP: '*-musllinux*'
-          CIBW_BEFORE_BUILD_LINUX: >
-            python -m pip install --upgrade pip
-            pip install --prefer-binary auditwheel -r dev_requirements.txt -r requirements.txt
-          CIBW_BEFORE_ALL_LINUX: >
-            if which yum >/dev/null; then
-                yum install -y libffi libffi-devel openssl-devel wget unzip blas-devel lapack-devel libxml2-devel libxslt-devel python3-devel
-            elif which apt-get >/dev/null; then
-                apt-get install -y build-essential libssl-dev libffi-dev wget unzip libxml2-dev python3-dev libxslt-dev python3-dev gcc musl-dev
-            else
-                apk add libffi libffi-dev openssl-dev wget unzip blas-dev lapack-dev libxml2-dev libxslt-dev python3-dev gcc musl-dev
-            fi
-
-      - name: Publish package
-        run: |
-          python -m twine upload --repository-url ${{ secrets.PYPI_OFFICIAL_UPLOAD_URL }} -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} --skip-existing wheelhouse/*
-
-  build_macos_wheels:
-    name: MacOS - Python - deploy
-    if: ${{ inputs.use_cython }}
-    runs-on: macos-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ inputs.python_version }}
-          architecture: ${{ inputs.python_arch }}
-
-      - name: Install dependencies
-        run: pip install --prefer-binary -r dev_requirements.txt -r requirements.txt
-
-      # TODO : use cibuildwheel
-      - name: Build wheel
-        run: python setup.py bdist_wheel
-
-      - name: Publish package
-        run: |
-          python -m twine upload --repository-url ${{ secrets.PYPI_OFFICIAL_UPLOAD_URL }} -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} --skip-existing dist/*
-
-  build_windows_wheels:
-    name: Windows - Python - deploy
-    if: ${{ inputs.use_cython }}
-    runs-on: windows-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ inputs.python_version }}
-          architecture: ${{ inputs.python_arch }}
-
-      - name: Install dependencies
-        run: pip install --prefer-binary -r dev_requirements.txt -r requirements.txt
-
-      - name: Build wheel
-        run: python setup.py bdist_wheel
-
-      - name: Publish package
-        run: |
-          python -m twine upload --repository-url ${{ secrets.PYPI_OFFICIAL_UPLOAD_URL }} -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} --skip-existing dist/*
-
-  build_any_wheels:
-    name: Any - Python - deploy
-    if: ${{ !inputs.use_cython }}
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ inputs.python_version }}
-          architecture: ${{ inputs.python_arch }}
-
-      - name: Install dependencies
-        run: pip install --prefer-binary -r dev_requirements.txt -r requirements.txt
-
-      - name: Build wheel
-        run: python setup.py bdist_wheel
-
-      - name: Publish package
-        run: |
-          python -m twine upload --repository-url ${{ secrets.PYPI_OFFICIAL_UPLOAD_URL }} -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} --skip-existing dist/*
-
   build_sdist:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
     name: Source distribution - Python - deploy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ inputs.python_version }}
           architecture: ${{ inputs.python_arch }}
 
       - name: Install dependencies
-        run: pip install --prefer-binary -r dev_requirements.txt -r requirements.txt
+        run: pip install -r dev_requirements.txt -r requirements.txt
 
       - name: Build sdist
         run: python setup.py sdist

@@ -10,7 +10,7 @@ on:
       python_version:
         description: 'Python version to use'
         type: string
-        default: '3.8.x'
+        default: '3.10.x'
       python_arch:
         description: 'Python arch to use'
         type: string
@@ -29,9 +29,9 @@ jobs:
     name: Ubuntu - Python - lint
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ inputs.python_version }}
         architecture: ${{ inputs.python_arch }}
