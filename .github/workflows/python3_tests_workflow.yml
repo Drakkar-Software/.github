@@ -1,4 +1,4 @@
-name: OctoBot Python3 Tests reusable workflow
+name: OctoBot Python Tests reusable workflow
 
 on:
   workflow_call:

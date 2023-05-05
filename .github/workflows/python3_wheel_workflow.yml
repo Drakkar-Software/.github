@@ -1,0 +1,107 @@
+name: OctoBot Python Wheel build reusable workflow
+
+on:
+  workflow_call:
+    inputs:
+      python_cibw_build:
+        description: 'Project cibw build'
+        type: string
+        default: 'cp38-* cp39-* cp310-* cp311-*'
+      linux_cibw_archs:
+        description: 'Linux cibw archs'
+        type: string
+        default: 'auto aarch64 ppc64le s390x'
+      python_version:
+        description: 'Python version to use'
+        type: string
+        default: '3.10.x'
+      python_arch:
+        description: 'Python arch to use'
+        type: string
+        default: 'x64'
+      use_cython:
+        description: 'If project use cythonization'
+        type: boolean
+        default: true
+    secrets:
+      PYPI_OFFICIAL_UPLOAD_URL:
+        required: true
+      PYPI_USERNAME:
+        required: true
+      PYPI_PASSWORD:
+        required: true
+
+jobs:
+  build_wheels:
+    name: ${{ matrix.os }} - Python - deploy
+    if: ${{ inputs.use_cython }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: ${{ matrix.os == 'windows-latest' }}
+  
+      - name: Install OpenBLAS (macos)
+        if: ${{ matrix.os == 'macOS-latest' }}
+        run: |
+          brew install openblas
+          echo "OPENBLAS=$(brew --prefix openblas)" >> $GITHUB_ENV
+
+      - name: Set up Qemu when building arm
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: all
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.11.3
+        env:
+          CIBW_BUILD: ${{ inputs.python_cibw_build }}
+          CIBW_ARCHS_LINUX: ${{ inputs.linux_cibw_archs }}
+          CIBW_ARCHS_MACOS: "x86_64 universal2 arm64"
+          CIBW_ARCHS_WINDOWS: "auto64"
+          CIBW_BUILD_VERBOSITY_LINUX: 0
+          # skip musllinux for now, requires to build cryptography
+          CIBW_SKIP: 'cp27-* cp36-* cp37-* pp27-* *-musllinux*'
+          CIBW_BEFORE_BUILD_LINUX: >
+            python -m pip install --upgrade pip
+            pip install --prefer-binary auditwheel -r dev_requirements.txt -r requirements.txt
+          CIBW_BEFORE_ALL_LINUX: >
+            if which yum >/dev/null; then
+                yum install -y libffi libffi-devel openssl-devel wget unzip blas-devel lapack-devel libxml2-devel libxslt-devel python3-devel
+            elif which apt-get >/dev/null; then
+                apt-get install -y build-essential libssl-dev libffi-dev wget unzip libxml2-dev python3-dev libxslt-dev python3-dev gcc musl-dev
+            else
+                apk add libffi libffi-dev openssl-dev wget unzip blas-dev lapack-dev libxml2-dev libxslt-dev python3-dev gcc musl-dev
+            fi
+
+      - name: Publish package
+        run: |
+          python -m twine upload --repository-url ${{ secrets.PYPI_OFFICIAL_UPLOAD_URL }} -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} --skip-existing wheelhouse/*
+
+  build_sdist:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+    name: Source distribution - Python - deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ inputs.python_version }}
+          architecture: ${{ inputs.python_arch }}
+
+      - name: Install dependencies
+        run: pip install --prefer-binary -r dev_requirements.txt -r requirements.txt
+
+      - name: Build sdist
+        run: python setup.py sdist
+
+      - name: Publish package
+        run: |
+          python -m twine upload --repository-url ${{ secrets.PYPI_OFFICIAL_UPLOAD_URL }} -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} --skip-existing dist/*
