@@ -10,7 +10,7 @@ on:
       linux_cibw_archs:
         description: 'Linux cibw archs'
         type: string
-        default: 'auto aarch64 ppc64le s390x'
+        default: 'auto aarch64'
       python_version:
         description: 'Python version to use'
         type: string
