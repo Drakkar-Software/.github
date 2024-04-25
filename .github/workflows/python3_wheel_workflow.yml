@@ -38,7 +38,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os: [ubuntu-latest, windows-latest, macos-13]
 
     steps:
       - uses: actions/checkout@v4
@@ -56,7 +56,7 @@ jobs:
         if: ${{ matrix.os == 'windows-latest' }}
   
       - name: Install OpenBLAS (macos)
-        if: ${{ matrix.os == 'macOS-latest' }}
+        if: ${{ matrix.os == 'macos-13' }}
         run: |
           brew install openblas
           echo "OPENBLAS=$(brew --prefix openblas)" >> $GITHUB_ENV
