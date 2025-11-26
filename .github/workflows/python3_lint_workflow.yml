@@ -23,6 +23,10 @@ on:
         description: 'Run black code formatter check'
         type: boolean
         default: false
+      use_full_requirements:
+        description: 'Also install full_requirements.txt'
+        type: boolean
+        default: false
 
 jobs:
   lint:

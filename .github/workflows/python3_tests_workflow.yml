@@ -15,6 +15,10 @@ on:
         description: 'Python arch to use'
         type: string
         default: 'x64'
+      use_full_requirements:
+        description: 'Also install full_requirements.txt'
+        type: boolean
+        default: false
     secrets:
       COVERALLS_REPO_TOKEN:
         required: false
