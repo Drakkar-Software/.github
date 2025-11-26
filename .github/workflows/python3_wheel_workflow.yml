@@ -23,6 +23,10 @@ on:
         description: 'If project use cythonization'
         type: boolean
         default: true
+      use_full_requirements:
+        description: 'Also install full_requirements.txt'
+        type: boolean
+        default: false
     secrets:
       PYPI_OFFICIAL_UPLOAD_URL:
         required: true

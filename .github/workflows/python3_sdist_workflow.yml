@@ -11,6 +11,10 @@ on:
         description: 'Python arch to use'
         type: string
         default: 'x64'
+      use_full_requirements:
+        description: 'Also install full_requirements.txt'
+        type: boolean
+        default: false
     secrets:
       PYPI_OFFICIAL_UPLOAD_URL:
         required: true
