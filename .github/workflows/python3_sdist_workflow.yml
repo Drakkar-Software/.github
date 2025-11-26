@@ -35,6 +35,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r dev_requirements.txt -r requirements.txt
 
+      - name: Install full dependencies
+        if: ${{ inputs.use_full_requirements }}
+        run: pip install --prefer-binary -r full_requirements.txt
+
       - name: Build sdist
         run: python setup.py sdist
 

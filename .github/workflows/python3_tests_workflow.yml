@@ -42,6 +42,10 @@ jobs:
       - name: Install dependencies
         run: pip install -r dev_requirements.txt -r requirements.txt
 
+      - name: Install full dependencies
+        if: ${{ inputs.use_full_requirements }}
+        run: pip install --prefer-binary -r full_requirements.txt
+
       - name: Pytests
         run: pytest --cov=. --cov-config=.coveragerc --durations=0 -rw ${{ inputs.project_test_dirs }}
 
