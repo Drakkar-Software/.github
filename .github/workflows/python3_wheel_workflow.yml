@@ -6,7 +6,7 @@ on:
       python_cibw_build:
         description: 'Project cibw build'
         type: string
-        default: 'cp38-* cp39-* cp310-* cp311-*'
+        default: 'cp310-* cp311-* cp312-* cp313-*'
       linux_cibw_archs:
         description: 'Linux cibw archs'
         type: string
@@ -25,6 +25,10 @@ on:
         default: true
       use_full_requirements:
         description: 'Also install full_requirements.txt'
+        type: boolean
+        default: false
+      build_mobile_wheels:
+        description: 'Build mobile wheels'
         type: boolean
         default: false
     secrets:
@@ -83,7 +87,7 @@ jobs:
           CIBW_SKIP: 'cp27-* cp36-* cp37-* pp27-* *-musllinux*'
           CIBW_BEFORE_BUILD_LINUX: >
             python -m pip install --upgrade pip
-            pip install --prefer-binary auditwheel -r dev_requirements.txt -r requirements.txt
+            pip install --prefer-binary auditwheel -r dev_requirements.txt -r requirements.txt -f full_requirements.txt
           CIBW_BEFORE_ALL_LINUX: >
             if which yum >/dev/null; then
                 yum install -y libffi libffi-devel openssl-devel wget unzip blas-devel lapack-devel libxml2-devel libxslt-devel python3-devel
@@ -92,6 +96,52 @@ jobs:
             else
                 apk add libffi libffi-dev openssl-dev wget unzip blas-dev lapack-dev libxml2-dev libxslt-dev python3-dev gcc musl-dev
             fi
+
+      - name: Publish package
+        run: |
+          python -m twine upload --repository-url ${{ secrets.PYPI_OFFICIAL_UPLOAD_URL }} -u ${{ secrets.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} --skip-existing wheelhouse/*
+
+  build_mobile_wheels:
+    if: ${{ inputs.build_mobile_wheels }}
+    name: ${{ matrix.platform }} - Python - deploy
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: android
+          - os: macos-latest
+            platform: ios
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python_version }}
+          architecture: ${{ inputs.python_arch }}
+
+      - name: Install dependencies
+        run: pip install twine
+
+      - name: 🛠️ Setup Android SDK
+        if: ${{ matrix.platform == 'android' }}
+        uses: android-actions/setup-android@v3
+
+      - name: Build mobile wheels
+        uses: pypa/cibuildwheel@v2.11.3
+        env:
+          CIBW_PLATFORM: ${{ matrix.platform }}
+          CIBW_BUILD: ${{ inputs.python_cibw_build }}
+          CIBW_ARCHS_IOS: ${{ matrix.platform == 'ios' && 'all' || '' }}
+          CIBW_ARCHS_ANDROID: ${{ matrix.platform == 'android' && 'all' || '' }}
+          CIBW_BUILD_VERBOSITY_LINUX: 0
+          # skip musllinux for now, requires to build cryptography
+          CIBW_SKIP: 'cp27-* cp36-* cp37-* pp27-* *-musllinux*'
+          CIBW_BEFORE_BUILD: >
+            python -m pip install --upgrade pip
+            pip install --prefer-binary -r dev_requirements.txt -r requirements.txt -f full_requirements.txt
 
       - name: Publish package
         run: |
