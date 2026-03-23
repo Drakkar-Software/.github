@@ -10,7 +10,7 @@ on:
       python_version:
         description: 'Python version to use'
         type: string
-        default: '3.10.x'
+        default: '3.13.x'
       python_arch:
         description: 'Python arch to use'
         type: string
